@@ -4,12 +4,19 @@
   const turn = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
   const items = ['Escudo de capa', 'Confeti'];
   const kmh = speed => Math.round(Math.abs(speed) * .31);
+  const bottleBoostDuration = 1.8;
+
+  function tickCarTimers(car, dt) {
+    for (const key of ['boost', 'shield', 'stunned', 'hitDelay', 'spin', 'bottleBoost', 'impact']) {
+      car[key] = Math.max(0, car[key] - dt);
+    }
+  }
 
   function participant(track, character, vehicle, start, lane, index) {
     const pose = track.at(start, lane);
     return {
       character, vehicle, index, lane, lateral:lane, ...pose, progress: start, roadS: track.wrap(start),
-      speed: 0, movementAngle: pose.angle, boost: 0, shield: 0, stunned: 0, hitDelay: 0, spin: 0, bottleBoost: 0,
+      speed: 0, movementAngle: pose.angle, boost: 0, shield: 0, stunned: 0, hitDelay: 0, spin: 0, bottleBoost: 0, hasBottle: false,
       driftCharge: 0, drifting: false, finishTime: null, onBranch: false,
       steer: 0, throttle: false, braking: false, impact: 0
     };
@@ -74,9 +81,7 @@
       this.statusTime -= dt;
       for (const box of this.boxes) box.cooldown = Math.max(0, box.cooldown - dt);
       for (const car of this.cars) {
-        for (const key of ['boost', 'shield', 'stunned', 'hitDelay', 'spin', 'bottleBoost', 'impact']) {
-          car[key] = Math.max(0, car[key] - dt);
-        }
+        tickCarTimers(car, dt);
         if (car !== this.player) this.driveRival(car, dt);
       }
       this.drivePlayer(dt, input);
@@ -93,6 +98,9 @@
 
     driveRival(car, dt, elapsed = this.elapsed, field = this.cars) {
       const {track} = this;
+      if (car.hasBottle && !car.boost && !car.spin && !car.stunned && car.finishTime === null) {
+        this.useBottle(car);
+      }
       const {progress, index, vehicle} = car;
       const path = track.at(progress);
       const bend = Math.abs(turn(track.at(progress + 115).angle - path.angle));
@@ -100,6 +108,7 @@
       const tier = index * 60 / (this.cars.length-2);
       let pace = (291 + tier + vehicle.speed * 4 - Math.min(.8, bend) * 61 +
         Math.sin(progress / 295 + index * 1.95) * 13 - track.slope(progress) * 110) * (car.spin ? .34 : car.stunned ? .50 : 1);
+      if (car.bottleBoost) pace *= 1.27;
       let desired = car.lane*.88 + traffic;
       if(field.length>6) {
         const leader=field.find(other=>other.index!==index && other.finishTime===null &&
@@ -199,11 +208,15 @@
       }
     }
 
-    useBottle() {
-      this.bottle=false;
-      this.player.bottleBoost=1.8;
-      this.player.boost=Math.max(this.player.boost,1.8);
-      this.say('¡Turbo de botellín!', 'bottleTurbo');
+    useBottle(car = this.player) {
+      car.bottleBoost = bottleBoostDuration;
+      car.boost = Math.max(car.boost, bottleBoostDuration);
+      if (car === this.player) {
+        this.bottle = false;
+        this.say('¡Turbo de botellín!', 'bottleTurbo');
+      } else {
+        car.hasBottle = false;
+      }
     }
 
     applySpike(car) {
@@ -216,10 +229,10 @@
       car.hitDelay=roadObjects.spikeDuration+.28;
       car.impact=.34;
       car.speed*=.42;
+      car.boost=0;
+      car.bottleBoost=0;
       if(car===this.player){
         car.angle+=(car.steer<0?-.22:.22);
-        car.boost=0;
-        car.bottleBoost=0;
         this.say('¡Cruz con pinchos!','spin');
       }
       return true;
@@ -241,15 +254,21 @@
 
     checkRoadObjects() {
       const p = this.player;
-      const nearby = (object, radius) => (p.x - object.x) ** 2 + (p.y - object.y) ** 2 < radius ** 2;
+      const nearby = (object, radius, car = p) => (car.x - object.x) ** 2 + (car.y - object.y) ** 2 < radius ** 2;
       if (this.hazards.some(obstacle => nearby(obstacle, 29))) this.hit('¡Obstáculo!', .33 + p.vehicle.weight * .055);
       for(const item of this.trackItems.entries){
         if(!item.active) continue;
         if(item.kind==='bottle'){
-          if(this.bottle || !nearby(item,27)) continue;
-          this.bottle=true;
+          if (!this.bottle && nearby(item, 27)) {
+            this.bottle = true;
+            this.say('Cruzcampo recogido · T o Turbo','pickup');
+          } else {
+            const rival = this.cars.find(car => car !== p && car.finishTime === null &&
+              !car.hasBottle && !car.spin && nearby(item, 27, car));
+            if (!rival) continue;
+            rival.hasBottle = true;
+          }
           this.trackItems.take(item,this.elapsed);
-          this.say('Cruzcampo recogido · T o Turbo','pickup');
         } else {
           const struck=this.cars.find(car=>!car.hitDelay && car.finishTime===null &&
             (car.x-item.x)**2+(car.y-item.y)**2<25**2);
@@ -295,8 +314,7 @@
         clock += dt;
         for (const car of pending) {
           if (car.finishTime !== null) continue;
-          car.stunned = Math.max(0, car.stunned - dt);
-          car.spin = Math.max(0, car.spin - dt);
+          tickCarTimers(car, dt);
           this.driveRival(car,dt,clock,finishers);
         }
       }
