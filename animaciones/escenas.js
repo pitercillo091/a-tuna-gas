@@ -10,7 +10,7 @@
   })));
   const roleOnPodium = pilot => ['Baile','Acompañante'].includes(pilot.role) ? 'Pandereta de podio' : pilot.role;
 
-  function introCar(ctx, entrant, t, side) {
+  function introCar(ctx, entrant, t, side, portraitScale=1) {
     const {vehicle, character} = entrant;
     const f = side ? 23 : 0;
     const bob = Math.round(Math.sin(t*19)*1.3);
@@ -42,7 +42,8 @@
       ctx.rotate(tilt);
       ctx.shadowColor='#0c151bb0';
       ctx.shadowBlur=4;
-      ctx.drawImage(face,-35,-40,70,77);
+      ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(face,-35*portraitScale,37-77*portraitScale,70*portraitScale,77*portraitScale);
       ctx.restore();
     }
     ctx.strokeStyle='#111923';
@@ -103,13 +104,13 @@
     ctx.restore();
   }
 
-  function paintFront(ctx,entrant,x,y,scale,tilt=0) {
+  function paintFront(ctx,entrant,x,y,scale,tilt=0,portraitScale=1) {
     ctx.save();
     ctx.translate(x,y);
     ctx.rotate(tilt);
     ctx.scale(scale,scale);
     ctx.translate(-448,-177);
-    introCar(ctx,entrant,0,0);
+    introCar(ctx,entrant,0,0,portraitScale);
     ctx.restore();
   }
 
