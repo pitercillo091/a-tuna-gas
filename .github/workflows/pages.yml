@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: '24'
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - run: node herramientas/preparar-pages.mjs
       - uses: actions/upload-pages-artifact@v4
         with:
