@@ -1,0 +1,57 @@
+:root {
+  --brand-metal: linear-gradient(180deg,#fff9e5 12%,#fff2ce 38%,#b9c6c8 51%,#f0f1de 65%,#9ea7a7 100%);
+  --brand-fire: linear-gradient(180deg,#fff3bd 12%,#ffcf65 39%,#f09b48 52%,#ffb158 62%,#e57539 93%);
+}
+.brand { gap: 9px; font: 400 1.38rem/1 var(--display); white-space: nowrap; }
+.brand-name { transform: skewX(-10deg); }
+.brand b { color: #ffc967; }
+.brand-mark { width: 29px; height: 22px; transform: skewX(-17deg); display: grid; align-content: center; gap: 2px; }
+.brand-mark i { width: 100%; height: 3px; background: linear-gradient(90deg,#be6745,#ffcf6a); }
+.brand-mark i:nth-child(2) { width: 78%; }
+.brand-mark i:nth-child(3) { width: 56%; }
+.hero-title {
+  position: relative; isolation: isolate; width: max-content; color: #fff3d6;
+  font: 400 clamp(4.8rem, 10vw, 10rem)/.77 var(--display); letter-spacing: -.078em;
+  line-height: .82; margin: 0 0 32px; text-shadow: none; transform: skewX(-11deg);
+}
+.hero-title .logo-line { display: block; position: relative; isolation: isolate; }
+.hero-title .logo-line::after {
+  content: attr(data-lettering); position: absolute; inset: 0; z-index: 0; color: transparent;
+  text-shadow: .017em .02em #a27d66,.03em .035em #73524c,.044em .049em #392634,.052em .055em #1c1e29,.073em .084em #151a25;
+}
+.hero-title .logo-top { font-size: .64em; margin: 0 0 .035em .13em; }
+.hero-title .logo-bottom { margin-left: .085em; color: #ffbc58; }
+.logo-fill { display: block; position: relative; z-index: 1; background: var(--brand-metal); background-clip: text; color: transparent; }
+.logo-bottom .logo-fill { background-image: var(--brand-fire); }
+.logo-stripes { position: absolute; display: grid; gap: 3px; left: .28em; bottom: -.158em; width: 81%; }
+.logo-stripes i { height: 2px; background: linear-gradient(90deg,#e5753800,#f08348 31%,#ffda7b 95%,#ffda7b00); }
+.logo-stripes i + i { width: 77%; opacity: .72; }
+.logo-stripes i + i + i { width: 52%; opacity: .45; }
+.choices.circuit-list { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.circuit-art { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; object-fit: cover; image-rendering: pixelated; }
+.circuit-map { position: absolute; width: 35%; min-width: 58px; height: auto; top: 8px; left: 8px; border: 1px solid #ffd68f85; image-rendering: auto; }
+.circuit-card .choice-copy { min-height: 118px; padding: 13px 13px 16px; }
+.circuit-card .choice-name { font-size: clamp(.92rem, 1.7vw, 1.34rem); }
+.circuit-card .choice-role { line-height: 1.5; }
+.circuit-info { color: var(--gold); display: block; font: 700 .67rem/1.45 var(--mono); margin-top: 7px; }
+.loading-screen {
+  display: grid; place-content: center; justify-items: center; min-height: min(65vh,555px); padding: 26px;
+  background: radial-gradient(ellipse at 63% 54%, #394349, #182a32 64%); text-align: center;
+}
+.loading-screen .brand-name { color: var(--ink); font: 400 clamp(2rem,8vw,5.1rem)/.99 var(--display); letter-spacing: -.07em; margin-bottom: 18px; }
+.loading-screen h2 { margin: 0 0 12px; }
+.loading-screen p { color: var(--muted); margin-bottom: 0; }
+.kart-art { background: radial-gradient(ellipse at 50% 44%,#425763,#27414a 61%,#20363f); }
+.kart-art canvas { width: 196px; }
+@media (max-width: 800px) {
+  .choices.circuit-list { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 570px) {
+  .brand { font-size: 1.17rem; }
+  .brand-mark { width: 23px; }
+  .steps button { font-size: .73rem; }
+  .hero-title { margin-bottom: 28px; }
+  .choices.circuit-list { grid-template-columns: 1fr; }
+  .circuit-card .choice-copy { min-height: 0; }
+  .circuit-art { aspect-ratio: 2.2; }
+}

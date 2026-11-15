@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14272f">
+  <meta name="description" content="Carreras de la Tuna en 30 circuitos. Corre en los dos sentidos y guarda tus mejores tiempos.">
+  <meta property="og:title" content="A Tuna Gas">
+  <meta property="og:description" content="30 circuitos de la Tuna en 15 localidades. Compite por el mejor tiempo.">
+  <meta property="og:image" content="https://atunagas.aquiestalatuna.es/promocion/final/a-tuna-gas-horizontal.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>A Tuna Gas 1.2 · Carreras de la Rondalla de Lopera</title>
+  <link rel="stylesheet" href="interfaz/estilos.css">
+  <link rel="stylesheet" href="interfaz/marca.css">
+  <link rel="stylesheet" href="interfaz/secuencias.css">
+  <link rel="stylesheet" href="interfaz/version-1.1.css">
+  <link rel="stylesheet" href="interfaz/version-1.2.css">
+  <script>globalThis.ATunaGas = {};</script>
+  <script defer src="personajes/catalogo.js"></script>
+  <script defer src="vehiculos/catalogo.js"></script>
+  <script defer src="circuitos/trazado.js"></script>
+  <script defer src="circuitos/lopera.js"></script>
+  <script defer src="circuitos/arjona.js"></script>
+  <script defer src="circuitos/banos.js"></script>
+  <script defer src="circuitos/poblaciones.js"></script>
+  <script defer src="circuitos/ampliacion-1.1.js"></script>
+  <script defer src="circuitos/catalogo.js"></script>
+  <script defer src="personajes/encuadres.js"></script>
+  <script defer src="personajes/conduccion.js"></script>
+  <script defer src="vehiculos/dibujo.js"></script>
+  <script defer src="vehiculos/efectos.js"></script>
+  <script defer src="circuitos/escenarios.js"></script>
+  <script defer src="circuitos/monumentos.js"></script>
+  <script defer src="sonidos/audio.js"></script>
+  <script defer src="musica/reproductor.js"></script>
+  <script defer src="objetos/pista.js"></script>
+  <script defer src="juego/carrera.js"></script>
+  <script defer src="circuitos/dibujo.js"></script>
+  <script defer src="animaciones/atlas.js"></script>
+  <script defer src="animaciones/escenas.js"></script>
+  <script defer src="juego/repeticion.js"></script>
+  <script defer src="clasificaciones/config.js"></script>
+  <script defer src="clasificaciones/pantalla.js"></script>
+  <script defer src="interfaz/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="bar">
+      <button class="brand" id="home-button" aria-label="A Tuna Gas, volver al inicio">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name">A TUNA <b>GAS</b></span>
+      </button>
+      <div class="audio-actions"><button id="ranking-button" class="quiet">Clasificación</button><button id="sound" class="quiet" aria-pressed="true">Sonido activado</button><button id="music-button" class="quiet" aria-pressed="true">♫ Música</button></div>
+    </header>
+    <audio id="music-main" preload="metadata" aria-hidden="true"></audio>
+    <audio id="music-turbo" preload="auto" aria-hidden="true"></audio>
+    <main>
+      <section id="home">
+        <div class="hero">
+          <canvas id="cover" width="960" height="640" aria-hidden="true"></canvas>
+          <div class="hero-content">
+            <p class="overline"><span></span> RONDALLA DE LOPERA</p>
+            <h1 class="hero-title" aria-label="A Tuna Gas">
+              <span class="logo-line logo-top" data-lettering="A TUNA" aria-hidden="true"><span class="logo-fill">A TUNA</span></span>
+              <span class="logo-line logo-bottom" data-lettering="GAS" aria-hidden="true"><span class="logo-fill">GAS</span></span>
+              <span class="logo-stripes" aria-hidden="true"><i></i><i></i><i></i></span>
+            </h1>
+            <p class="hero-description">Saca a la Tuna del garaje. Quince localidades y treinta circuitos. Corre de Lopera a Córdoba en los dos sentidos.</p>
+            <button class="primary" id="play">Jugar <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="hero-caption"><span aria-hidden="true">⚑</span> De Lopera a Córdoba</div>
+        </div>
+        <div class="home-foot">
+          <div><span class="info-label">Parrilla</span><strong>15 pilotos · 6 coches</strong></div>
+          <div><span class="info-label">Carrera</span><strong>30 circuitos · 6 a 15 corredores</strong></div>
+          <div class="keys"><span class="info-label">Teclado</span><strong><kbd>↑↓←→</kbd> Conducir <kbd>Shift</kbd> Derrapar <kbd>Espacio</kbd> Objeto <kbd>T</kbd> Turbo</strong></div>
+        </div>
+      </section>
+      <section id="select" class="selection panel" hidden>
+        <nav id="steps" class="steps" aria-label="Pasos de preparación">
+          <button data-step="drivers">Piloto</button><button data-step="vehicles">Vehículo</button><button data-step="circuits">Circuito</button><button data-step="grid">Parrilla</button>
+        </nav>
+        <div class="screen-title"><h2 id="selection-title" tabindex="-1"></h2><p id="selection-note"></p></div>
+        <div class="choices" id="choices"></div>
+        <div class="selection-actions">
+          <button class="quiet" id="back">← Volver</button><button class="primary" id="next">Continuar</button>
+        </div>
+      </section>
+      <section id="loading" class="loading-screen panel" hidden aria-live="polite">
+        <div class="brand-name">A TUNA <b>GAS</b></div>
+        <h2 id="loading-title" tabindex="-1">Cargando la carrera</h2>
+        <p id="loading-note"></p>
+      </section>
+      <section id="intro" class="starting-grid panel" hidden aria-labelledby="intro-title">
+        <div class="sequence-header">
+          <h2 id="intro-title" tabindex="-1">Parrilla de salida</h2>
+          <button id="skip-intro" class="quiet">Ir a la cuenta atrás</button>
+        </div>
+        <div class="sequence-stage">
+          <canvas id="intro-canvas" width="900" height="345" aria-label="Presentación de los corredores sentados en sus coches"></canvas>
+          <div class="sequence-name" aria-live="polite"><strong id="intro-pilot"></strong><span id="intro-car"></span></div>
+        </div>
+        <ol class="lineup" id="lineup" aria-label="Participantes"></ol>
+      </section>
+      <section id="race" class="race-screen" hidden aria-label="Carrera">
+        <div class="race-heading"><h2 id="race-title">Gran Premio de Lopera</h2><button class="quiet" id="pause">Pausar</button></div>
+        <div class="viewport">
+          <canvas id="track" width="960" height="560" aria-label="Vista aérea de la carrera"></canvas>
+          <div class="dash" aria-label="Marcadores de carrera">
+            <div><span>Puesto</span><b id="place">—</b></div><div><span>Vuelta</span><b id="lap">1/3</b></div>
+            <div><span>Tiempo</span><b id="time">0:00.00</b></div>
+            <div><span>Rapidez</span><b id="speed">0 km/h</b></div>
+          </div>
+          <canvas id="minimap" width="132" height="92" aria-label="Mapa del circuito"></canvas>
+          <div class="countdown" id="countdown" aria-live="polite"></div>
+          <div class="race-message" id="race-message" role="status"></div>
+          <div class="inventory">
+            <div class="item-slot"><span>Objeto</span><b id="item">—</b></div>
+            <div class="item-slot" id="turbo-slot" title="Botellín Cruzcampo"><canvas id="bottle-icon" width="23" height="33" aria-hidden="true"></canvas><div><span>Botellín</span><br><b id="turbo-status">—</b></div></div>
+          </div>
+          <div class="pause-layer" id="pause-layer" hidden><h2>Carrera en pausa</h2><button class="primary" id="resume">Continuar</button><button class="quiet" id="quit">Volver a la parrilla</button></div>
+        </div>
+        <div class="touch" id="touch" aria-label="Mandos táctiles">
+          <div class="touch-group"><button data-control="left" aria-label="Girar a la izquierda">←</button><button data-control="right" aria-label="Girar a la derecha">→</button></div>
+          <div class="touch-group"><button data-control="item" aria-label="Usar objeto">Objeto</button><button data-control="turbo" aria-label="Activar turbo">Turbo</button><button data-control="drift">Derrape</button><button data-control="brake">Freno</button><button data-control="gas">Acelerar</button></div>
+        </div>
+        <p class="race-help">Flechas o WASD para conducir · Shift para derrapar · Espacio para usar objetos · T para el turbo · Esc para pausar</p>
+      </section>
+      <section id="results" class="results panel" hidden>
+        <div class="screen-title"><p class="overline">A TUNA GAS · RESULTADOS</p><h2 id="result-title" tabindex="-1"></h2><p id="result-note"></p></div>
+        <div class="save-score">
+          <form id="time-form" hidden>
+            <label for="time-name">Nombre en la clasificación</label>
+            <div><input id="time-name" name="nickname" autocomplete="nickname" inputmode="text" minlength="2" maxlength="24" required>
+            <button id="save-time" class="primary" type="submit">Guardar tiempo</button></div>
+          </form>
+          <p id="save-status" role="status"></p>
+          <button id="route-ranking" type="button" class="quiet">Ver tiempos de este circuito</button>
+        </div>
+        <figure class="podium">
+          <canvas id="podium-canvas" width="900" height="365" aria-label="Podio animado de los tres primeros clasificados"></canvas>
+          <figcaption class="podium-names" id="podium-names"></figcaption>
+        </figure>
+        <ol id="standing"></ol>
+        <div class="selection-actions"><button id="change" class="quiet">Cambiar combinación</button><button id="replay" class="primary">Repetir carrera <span aria-hidden="true">→</span></button></div>
+      </section>
+      <section id="ranking" class="panel" hidden aria-labelledby="ranking-title">
+        <div class="screen-title"><h2 id="ranking-title" tabindex="-1">Clasificación</h2><p>Mejores tiempos de la Tuna</p></div>
+        <div class="ranking-filters">
+          <label>Localidad<select id="filter-town"><option value="">Todas las localidades</option></select></label>
+          <label>Circuito<select id="filter-track"><option value="">Todos los circuitos</option></select></label>
+          <button class="quiet" id="ranking-refresh" type="button">Actualizar</button>
+        </div>
+        <p class="ranking-status" id="ranking-status" role="status"></p>
+        <div class="ranking-scroll"><table class="ranking-table">
+          <thead><tr><th scope="col">Puesto</th><th scope="col">Jugador</th><th scope="col">Tiempo</th><th scope="col">Circuito</th><th scope="col">Piloto</th><th scope="col">Coche</th><th scope="col">Fecha</th></tr></thead>
+          <tbody id="ranking-body"></tbody>
+        </table></div>
+        <div class="selection-actions"><button id="ranking-back" class="quiet" type="button">← Volver</button></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

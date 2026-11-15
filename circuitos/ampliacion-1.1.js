@@ -1,0 +1,62 @@
+(() => {
+  const {trackSpecs}=globalThis.ATunaGas;
+  const theme=(ground,road,shoulder,curbB,highlight,flecks)=>({
+    ground,road,shoulder,curbB,highlight,flecks,curbA:'#edcfaa',texture:['#ffffff18','#191c2c25'],lane:'#f4d5ab73'
+  });
+  const common={laps:3,road:90,boxRows:[.08,.244,.435,.645,.825,.924]};
+  const districts=[
+    {...common,id:'puente-genil',town:'Puente Genil',name:'El Genil de las Luces',
+      description:'Cruza de Miragenil a La Alianza. Encadena las curvas del molino antes de la recta del paseo.',
+      feature:'Miragenil · Fábrica de La Alianza',width:2880,height:1970,landmark:[1680,1330],
+      palette:theme('#546f74','#3b535e','#ac9b87','#805464','#fbb978',['#64787e','#526b71','#607880','#726e77']),
+      anchors:[[1125,1570],[1550,1575],[2050,1560],[2460,1430],[2570,1120],[2520,815],[2215,562],
+        [1900,595],[1650,730],[1495,582],[1475,340],[1110,272],[751,410],[438,670],[345,969],
+        [460,1245],[691,1444],[856,1537]],
+      widths:[[0,105],[.16,109],[.28,64],[.36,82],[.48,70],[.62,76],[.76,66],[.88,97],[1,105]],
+      obstacleSpecs:[[.13,-52,'crate'],[.212,36,'barrel'],[.329,-43,'crate'],[.479,37,'sack'],[.65,-36,'barrel'],[.79,43,'crate'],[.927,-46,'sack']],
+      sectors:[[.10,'PASEO DE MIRAGENIL'],[.32,'PUENTE SOBRE EL GENIL'],[.52,'COMPLEJO LA ALIANZA']]},
+    {...common,id:'marmolejo',town:'Marmolejo',name:'La Vuelta del Balneario',
+      description:'Pasa por los jardines termales y rodea el Guadalquivir con dos curvas largas enlazadas.',
+      feature:'Balneario · Puente de San Bartolomé',width:2740,height:1930,landmark:[1555,777],
+      palette:theme('#66887a','#44575b','#b8b794','#5f8191','#c8e3c2',['#718f83','#5d8277','#75958a','#637b70']),
+      anchors:[[1170,1450],[1590,1462],[2030,1470],[2390,1280],[2445,970],[2300,687],[1990,490],
+        [1715,495],[1450,590],[1110,455],[772,390],[460,572],[340,925],[504,1170],
+        [841,1225],[886,1390]],
+      widths:[[0,108],[.21,87],[.29,67],[.39,99],[.56,94],[.71,68],[.84,80],[.93,92],[1,108]],
+      elevations:[[0,5],[.2,12],[.33,34],[.56,55],[.73,36],[.92,5],[1,5]],
+      obstacleSpecs:[[.112,47,'flower'],[.233,-40,'reeds'],[.442,47,'basket'],[.561,-44,'flower'],[.735,38,'reeds'],[.872,-42,'flower']],
+      sectors:[[.105,'LOS MANANTIALES'],[.351,'PUENTE DE SAN BARTOLOMÉ'],[.674,'PASEO DEL BALNEARIO']]},
+    {...common,id:'adamuz',town:'Adamuz',name:'San Andrés y Sierra Morena',
+      description:'Desde la Torre del Reloj, asciende entre olivares y frena en las curvas de piedra de la ladera.',
+      feature:'Torre del Reloj · Subida al olivar',width:2700,height:2070,landmark:[1220,1537],
+      palette:theme('#7c7956','#555754','#bbab74','#847456','#efe18b',['#7f8259','#99825c','#71764f','#89966a']),
+      anchors:[[1090,1690],[1560,1655],[2090,1600],[2370,1410],[2360,1120],[2160,925],[1840,1000],
+        [1580,850],[1590,660],[1830,407],[1540,237],[1190,360],[926,610],[832,840],
+        [640,970],[375,1030],[310,1340],[600,1590],[838,1667]],
+      widths:[[0,102],[.18,91],[.34,69],[.43,72],[.56,74],[.67,83],[.81,66],[.92,94],[1,102]],
+      elevations:[[0,0],[.17,12],[.37,71],[.56,123],[.67,99],[.83,27],[1,0]],
+      obstacleSpecs:[[.134,45,'basket'],[.246,-40,'stone'],[.329,39,'basket'],[.43,-35,'stone'],[.567,37,'stone'],[.68,-44,'basket'],[.836,37,'stone']],
+      sectors:[[.05,'TORRE DEL RELOJ'],[.30,'OLIVAR DE SIERRA MORENA'],[.57,'CUESTA DE SAN ANDRÉS'],[.81,'BAJADA DE PIEDRA']]},
+    {...common,id:'el-carpio',town:'El Carpio',name:'La Torre y el Azud',
+      description:'Pasa junto a Garci Méndez y baja al antiguo azud entre dos eses de adoquines.',
+      feature:'Torre de Garci Méndez · Azud · Eses',width:2550,height:1860,landmark:[1490,1204],
+      palette:theme('#907460','#534c55','#bd977a','#965e65','#e9a988',['#917461','#9e826a','#826e64','#9a8577']),
+      anchors:[[1060,1440],[1510,1440],[2020,1415],[2225,1180],[2220,878],[2040,655],[1790,714],[1540,875],
+        [1320,754],[1240,440],[1040,294],[719,430],[828,665],[752,865],[481,927],[315,1150],[533,1390],[760,1440]],
+      widths:[[0,113],[.17,91],[.27,68],[.41,78],[.6,70],[.7,65],[.84,82],[.94,100],[1,113]],
+      obstacleSpecs:[[.13,54,'flower'],[.211,-48,'stone'],[.325,43,'mosaic'],[.478,-38,'stone'],[.633,37,'jar'],[.758,-37,'mosaic'],[.867,46,'crate']],
+      sectors:[[.08,'PLAZA DEL TRIUNFO'],[.36,'TORRE DE GARCI MÉNDEZ'],[.71,'ESES DEL AZUD']]},
+    {...common,id:'villafranca',town:'Villafranca de Córdoba',name:'El Puente de Hierro',
+      description:'Atraviesa el puente metálico y alterna una recta de ribera con los senderos de Fuente Agria.',
+      feature:'Puente de Hierro · Pinar de Fuente Agria',width:2840,height:1970,landmark:[2270,1132],
+      palette:theme('#557564','#405956','#a7b784','#697f78','#d2e8a2',['#5d826e','#597462','#748b64','#668371']),
+      anchors:[[1200,1570],[1710,1570],[2240,1535],[2530,1290],[2505,970],[2395,690],[2140,435],
+        [1810,300],[1520,426],[1220,319],[855,413],[660,614],[765,854],[590,1045],[375,1180],
+        [415,1415],[706,1535],[946,1565]],
+      widths:[[0,121],[.17,109],[.27,64],[.38,85],[.51,76],[.69,67],[.85,96],[1,121]],
+      elevations:[[0,0],[.26,4],[.47,67],[.62,49],[.82,13],[1,0]],
+      obstacleSpecs:[[.123,-59,'reeds'],[.29,38,'crate'],[.415,-42,'stone'],[.537,38,'basket'],[.663,-34,'reeds'],[.803,46,'crate'],[.913,-53,'reeds']],
+      sectors:[[.12,'CAMINO DE RIBERA'],[.283,'PUENTE DE HIERRO'],[.54,'PINAR DE FUENTE AGRIA'],[.764,'TORRE DEL RELOJ']]}
+  ];
+  trackSpecs.splice(trackSpecs.findIndex(track=>track.id==='cordoba'),0,...districts);
+})();

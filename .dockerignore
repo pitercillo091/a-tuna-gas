@@ -1,0 +1,16 @@
+.git
+.env*
+datos
+publicacion
+respaldo
+pruebas
+dist-pages
+musica
+promocion
+portadas
+node_modules
+*.pem
+*.key
+**/*.sqlite*
+**/*.pem
+**/*.key

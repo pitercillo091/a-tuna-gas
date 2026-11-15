@@ -1,0 +1,27 @@
+.screen-title h2[tabindex='-1']:focus, #intro-title:focus { outline:none; }
+.starting-grid { display:grid; gap:14px; padding:22px 26px 20px; }
+.sequence-header { display:flex; align-items:center; justify-content:space-between; gap:15px; }
+.sequence-header h2 { font:400 clamp(1.35rem,3.5vw,2.5rem)/1.05 var(--display); margin:0; letter-spacing:-.045em; }
+.sequence-stage { isolation:isolate; position:relative; background:#14212b; overflow:hidden; border:1px solid #62747b; }
+.sequence-stage canvas { display:block; width:100%; max-height:50vh; object-fit:contain; background:#14212b; image-rendering:pixelated; }
+.sequence-name { position:absolute; inset:auto auto 12px 12px; padding:7px 11px; background:#162631ee; border-left:3px solid #ffcf76; }
+.sequence-name strong { display:block; font-size:clamp(.9rem,3vw,1.75rem); color:#ffdf9a; }
+.sequence-name span { font-size:clamp(.69rem,1.7vw,.95rem); color:#d5ddd7; }
+.lineup { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px; padding:0; margin:0; list-style:none; }
+.lineup li { background:#213942; border:1px solid #536972; padding:6px; font-size:.76rem; min-width:0; overflow-wrap:anywhere; }
+.lineup li[aria-current] { border-color:#ffca6c; color:#ffdd92; background:#2d444b; }
+.lineup li span { color:#e4b769; padding-right:5px; font-family:var(--mono); }
+.podium { margin:0 28px 18px; border:1px solid #58686e; }
+.podium canvas { display:block; width:100%; height:auto; image-rendering:pixelated; }
+.podium-names { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; padding:4px; background:#142630; }
+.podium-names div { text-align:center; padding:7px 4px; min-width:0; background:#263d45; overflow-wrap:anywhere; }
+.podium-names b { color:#f9d289; }
+.podium-names span { display:block; color:#d1dcd1; font-size:.74rem; }
+@media(max-width:650px){
+  .starting-grid{padding:12px;gap:8px;}
+  .sequence-name{inset:auto auto 5px 5px;padding:3px 7px;}
+  .lineup{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .podium{margin:0 12px 12px;}
+  .podium-names b{font-size:.78rem;}
+  .podium-names span{font-size:.65rem;}
+}
