@@ -1,45 +1,33 @@
 # Publicar A Tuna Gas 1.2
 
-El sitio estático va a **GitHub Pages**. El servidor de clasificaciones es un servicio **Node.js 24** independiente, con SQLite en almacenamiento persistente. El navegador envía una repetición de la carrera y recibe el tiempo calculado por el servidor.
+## Juego local
 
-## Probar el proyecto localmente
+Abre `index.html` desde la carpeta del proyecto para correr. Para probar también la clasificación, ejecuta `node servidor/servidor.mjs` con Node.js 24 y abre [el juego local](http://127.0.0.1:8783/). Los tiempos de esta instalación se guardan en `datos/tiempos.sqlite`.
 
-1. Instala Node.js 24 si hace falta.
-2. Desde la carpeta del proyecto, ejecuta `node servidor/servidor.mjs` o abre `Abrir con clasificaciones locales.cmd`.
-3. Abre [http://127.0.0.1:8783/](http://127.0.0.1:8783/) y conserva abierta la terminal. Los tiempos de este servidor se guardan en `datos/tiempos.sqlite`.
-4. La entrada `index.html` también abre el juego directamente desde disco. Para compartir tiempos hace falta la entrada HTTP local o publicada.
+## Publicación web
 
-`node herramientas/preparar-pages.mjs` crea `dist-pages/` si todavía no existe. Puedes pasar otro directorio nuevo dentro del proyecto. El constructor solo copia las carpetas que usa el juego, la configuración del dominio y las portadas finales. Los respaldos, las capturas, los archivos de datos, las herramientas de servidor y los materiales de edición se quedan fuera del sitio.
+El flujo `.github/workflows/pages.yml` ejecuta las pruebas del motor, la clasificación, el navegador de escritorio y la emulación Android. Al actualizar `main`, comprueba la compatibilidad de la API pública y despliega por GitHub Pages si todo pasa. También se puede ejecutar desde Actions. Las solicitudes de incorporación ejecutan las pruebas sin publicar.
 
-## Publicar en GitHub Pages
+`node herramientas/preparar-pages.mjs` prepara el sitio estático en `dist-pages/`. Usa un destino nuevo si ya existe. El constructor versiona las referencias a scripts y estilos y copia únicamente los archivos públicos del juego. Las bases de datos locales, copias de seguridad y capturas de pruebas se guardan fuera del sitio.
 
-1. Descomprime el paquete para GitHub y sube su contenido a un repositorio propio para el juego. Conserva `.github/workflows/pages.yml`, `CNAME` y `.gitignore`.
-2. En **Settings → Pages**, elige **GitHub Actions** como fuente. Ejecuta **Publicar A Tuna Gas en GitHub Pages** desde **Actions → Run workflow**. El flujo prepara y publica el artefacto estático.
-3. Verifica el dominio en GitHub según las indicaciones de Pages. Configura `atunagas.aquiestalatuna.es` como **Custom domain** del repositorio antes de apuntarle el DNS. El flujo de Actions usa el ajuste de Pages. El archivo `CNAME` queda preparado si se publica desde una rama.
-4. En el DNS de `aquiestalatuna.es`, apunta `atunagas` mediante un registro CNAME con destino a `<propietario>.github.io`. Comprueba el uso del registro A existente antes de sustituirlo. Usa el propietario real del repositorio. Activa **Enforce HTTPS** cuando GitHub termine de emitir el certificado.
-5. Prueba [atunagas.aquiestalatuna.es](https://atunagas.aquiestalatuna.es/) desde un navegador privado. Completa una carrera y comprueba que aparecen el formulario y la clasificación.
+El dominio personalizado del repositorio `pitercillo091/a-tuna-gas` es `atunagas.aquiestalatuna.es`. En IONOS el host `atunagas` usa las cuatro direcciones IPv4 y las cuatro IPv6 de GitHub Pages. Esta configuración permite conservar sus registros MX de correo. El sitio se comprueba por HTTPS. [GitHub Pages](https://github.com/pitercillo091/a-tuna-gas/settings/pages) · [DNS en GitHub Pages](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
 
-[Configurar el dominio en GitHub Pages](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site) · [Flujos de publicación de Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
+| Tipo | Host | Destinos |
+| --- | --- | --- |
+| A | `atunagas` | `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` |
+| AAAA | `atunagas` | `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153` |
 
-## Alojar el servidor de clasificaciones
+## Clasificación pública
 
-1. En un servicio que ejecute Node.js 24 con volumen persistente, ejecuta el `Dockerfile` incluido o `node servidor/servidor.mjs`. El contenedor expone el puerto 8783 y guarda su base en `/datos/tiempos.sqlite`. Monta `/datos` en el volumen. Usa una sola instancia para este archivo de SQLite.
-2. Con Node.js directo, configura `HOST=0.0.0.0`, `PORT`, `API_ONLY=1`, `RANKING_DB` con una ruta del volumen y `SITE_ORIGIN=https://atunagas.aquiestalatuna.es`. El proxy del alojamiento debe servir HTTPS y enviar las peticiones al puerto Node. Usa controles de tráfico en el proxy si el servicio queda expuesto al público.
-3. Publica el servicio como `https://ranking-atunagas.aquiestalatuna.es`. También puedes usar un dominio HTTPS del proveedor y actualizar `clasificaciones/config.js` antes de ejecutar el flujo de Pages. Esa dirección es pública. Los permisos del proveedor se gestionan en su panel.
-4. Comprueba `https://ranking-atunagas.aquiestalatuna.es/api/health`. Debe indicar la versión 1.2 y 30 circuitos. Después guarda un tiempo desde el sitio de Pages y comprueba que aparece desde otra sesión.
-5. Al actualizar la física, prepara el servidor y el sitio para la misma versión. Conserva la ruta del volumen. Para una copia fría de la base, para el servicio, copia el volumen y reinicia. Las exportaciones y copias que contengan la base se quedan fuera de GitHub.
+GitHub Pages sirve el juego y una función de Supabase atiende la clasificación. PostgreSQL guarda los tiempos de forma persistente. La función crea una sesión con una semilla, examina la repetición de los controles y calcula el tiempo con el motor del juego. El jugador introduce su nombre y la ficha muestra el resto de datos de la carrera. La fecha definitiva es la del guardado en el servidor. La tabla ordena por tiempo y permite filtrar por localidad y por cada sentido del circuito.
 
-## Validación y almacenamiento
+`servidor/supabase/clasificacion.sql` define las tablas y los permisos. La función usa las credenciales privadas de su entorno para consultar dichas tablas. El navegador solo conoce la URL HTTPS de la función y el identificador aleatorio de su propia carrera. El servicio local sigue usando SQLite y las mismas reglas de repetición.
 
-- Cada carrera clasificable recibe un identificador aleatorio de un solo resultado, una semilla y una hora de inicio del servidor.
-- El navegador registra las pulsaciones. El servidor reconstruye la carrera con el motor de la versión 1.2 y exige que la repetición cruce la meta, dentro de la ventana de tiempo y los límites previstos.
-- La clave del resultado hace idempotente el reintento del mismo envío. El nombre se valida. El tiempo, la localidad, el circuito, el sentido y la fecha se obtienen en el servidor. El personaje y el coche se fijan en la sesión inicial.
-- Los mejores 100 resultados de cada filtro salen de SQLite en orden ascendente. La clasificación general compara los tiempos de todos los circuitos, incluidos los más cortos. El filtro de circuito permite comparar el mismo trazado.
-- SQLite conserva la tabla de tiempos después de reiniciar. Las sesiones caducadas se limpian en el servidor. Se limita el ritmo de solicitudes y el número de verificaciones simultáneas. La validación verifica la carrera y sus controles, incluso si los controles proceden de un bot que sabe conducir.
+Si se cambia el motor de una forma que afecte a las repeticiones, actualiza `replay.version` y publica la función antes de desplegar el sitio. `node herramientas/preparar-clasificacion.mjs publicacion/funcion-ranking` prepara los archivos de la función `atunagas-ranking`. La función se despliega por separado en Supabase y comparte el motor con la versión web. `node herramientas/verificar-clasificacion-publica.mjs` comprueba la versión, los filtros y el acceso desde el dominio del juego. [Desplegar una función de Supabase](https://supabase.com/docs/guides/functions/deploy)
 
 ## Comprobaciones
 
-- `node pruebas/motor.cjs` verifica las dos direcciones de cada localidad.
-- `node pruebas/clasificaciones.mjs` verifica guardado real, filtros, reintentos, rechazos y persistencia.
-- `node pruebas/navegador.cjs` requiere Playwright y Edge. `node pruebas/android-https.cjs` requiere Playwright, Chrome o Edge y Python con cryptography. La segunda prueba sirve el artefacto de Pages bajo `/juego/` con un certificado local efímero y comprueba la simulación táctil.
-- Prueba el dominio y el servicio público después del despliegue. El dominio `atunagas.aquiestalatuna.es` resolvía a un registro A durante la preparación y queda pendiente de validar por HTTPS.
+- `node pruebas/motor.cjs` prueba los 30 recorridos, los objetos, los rivales y los resultados.
+- `node pruebas/clasificaciones.mjs` comprueba el guardado persistente, los filtros, los reintentos y los rechazos.
+- `node pruebas/navegador.cjs` prueba menús, carrera, música y objetos desde disco con Playwright.
+- `node pruebas/android-https.cjs` usa Playwright, Chromium y Python con cryptography para probar controles táctiles, audio, resultados y clasificación bajo HTTPS con un dispositivo Android emulado.

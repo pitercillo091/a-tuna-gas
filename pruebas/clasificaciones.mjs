@@ -26,7 +26,7 @@ async function post(path,data,additional={}){
   return {status:res.status,...await res.json()};
 }
 const read=async path=>await (await fetch(url+'/api/'+path)).json();
-const initial=(id='lopera')=>({track:id,driver:'guitarra-gafas',vehicle:'peineta',entrants:6,clientVersion:'1.2'});
+const initial=(id='lopera')=>({track:id,driver:'guitarra-gafas',vehicle:'peineta',entrants:6,clientVersion:replay.version});
 
 function drive(session,route){
   const track=tracks.find(t=>t.id===route);
@@ -49,7 +49,7 @@ function drive(session,route){
 try{
   await listen();
   const health=await read('health');
-  assert.deepEqual(health,{version:'1.2',tracks:30});
+  assert.deepEqual(health,{version:replay.version,tracks:30});
   assert.equal((await post('races',initial(),{Origin:'https://example.invalid'})).status,403);
   const first=await post('races',initial());
   assert.equal(first.status,201);
@@ -60,8 +60,9 @@ try{
   assert.equal((await post('scores',{...payload,name:'<script>'})).status,400);
   assert.equal((await post('scores',{...payload,runs:[[1,1]]})).status,422);
   assert.equal((await post('scores',{...payload,runs:[[0,Math.ceil(result.timeMs/8.34)]]})).status,422);
-  assert.deepEqual(await post('scores',payload),{status:201,saved:true,timeMs:result.timeMs});
-  assert.deepEqual(await post('scores',payload),{status:200,saved:true,timeMs:result.timeMs});
+  const saved={id:first.id,saved:true,timeMs:result.timeMs,rank:1};
+  assert.deepEqual(await post('scores',payload),{status:201,...saved});
+  assert.deepEqual(await post('scores',payload),{status:200,...saved});
   assert.equal((await post('scores',{...payload,name:'Otro'})).status,409);
   const second=await post('races',initial('lopera-2'),{Origin:'https://atunagas.aquiestalatuna.es'});
   assert.equal(second.status,201);

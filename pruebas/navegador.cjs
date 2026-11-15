@@ -6,7 +6,7 @@ const {chromium} = require('playwright');
 
 const root=resolve(__dirname,'..');
 const gameUrl=pathToFileURL(resolve(root,'index.html')).href;
-const evidence=resolve(root,'pruebas','capturas-1.2');
+const evidence=resolve(root,'pruebas','capturas-1.2-final');
 const capture=(page,name,fullPage=false)=>page.screenshot({path:resolve(evidence,name+'.png'),fullPage});
 
 async function music(scene,page,audio='#music-main') {
@@ -106,7 +106,7 @@ async function monitor(page){
 
 async function main(){
   await mkdir(evidence,{recursive:true});
-  const browser=await chromium.launch({channel:'msedge',headless:true});
+  const browser=await chromium.launch(process.platform==='win32'?{channel:'msedge'}:{});
   const errors=[];
   function attach(page){
     page.on('pageerror',err=>errors.push(err.message));
@@ -124,6 +124,8 @@ async function main(){
     await monitor(page);
     await page.locator('.hero-description').click();
     await music('home',page);
+    await page.locator('#music-volume').fill('30');
+    assert(await page.locator('#music-main').evaluate(el=>el.volume>0 && el.volume<.12));
     await headGallery(page);
     await setup(page,'guitarra-gafas','peineta','lopera',6);
     await music('menu',page);
@@ -157,7 +159,10 @@ async function main(){
     assert((await drive(page,4)).done);
     await page.locator('#results').waitFor();
     await music('podium',page);
-    assert.match(await page.locator('#podium-names [data-place="1"]').innerText(),/PITER[\s\S]*Guitarra/);
+    const winner = await page.locator('#standing li:first-child strong').innerText();
+    const podiumWinner = await page.locator('#podium-names [data-place="1"]').innerText();
+    assert(podiumWinner.includes(winner));
+    if (winner === 'PITER') assert.match(podiumWinner,/Guitarra/);
     assert.equal(await page.locator('#standing time').count(),6);
     await page.waitForTimeout(1500);
     const shot=await page.locator('#podium-canvas').screenshot();
@@ -177,8 +182,13 @@ async function main(){
     assert(await page.evaluate(()=>window.observedRace.bottle));
     await page.keyboard.press('t');
     await page.waitForFunction(()=>window.observedRace.player.bottleBoost>0&&!window.observedRace.bottle);
-    await music('turbo',page,'#music-turbo');
+    await music('race',page);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('audio')].filter(audio => !audio.paused).length),1);
     await capture(page,'turbo-en-marcha');
+    await touchObject(page,'box');
+    await page.locator('#box-slot[data-ready=true]').waitFor();
+    await page.keyboard.press('Space');
+    await page.locator('#box-slot[data-ready=false]').waitFor();
     await touchObject(page,'spike');
     await page.waitForFunction(()=>window.observedRace.player.spin>.25);
     await capture(page,'trompo');

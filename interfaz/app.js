@@ -9,7 +9,7 @@
   const startButton = byId('play');
   const timeNode = byId('time');
   const sound = new GameAudio();
-  const music = new Music(byId('music-main'),byId('music-turbo'));
+  const music = new Music(byId('music-main'));
   let wantsMusic=true;
   const controls = {};
   const keysDown = new Set();
@@ -44,6 +44,7 @@
   let request;
   let itemPending = false;
   let turboPending = false;
+  let pausedInBackground = false;
   const timestep = 1 / 120;
 
   function node(tag, className, text) {
@@ -265,7 +266,7 @@
     accumulated = 0;
     byId('pause-layer').hidden = true;
     sound.motor(0, false);
-    music.setBoost(false);
+    pausedInBackground = false;
     clearControls();
   }
 
@@ -306,10 +307,11 @@
     byId('speed').textContent = racing.kmh(player.speed) + ' km/h';
     timeNode.textContent = formatTime(elapsed);
     byId('item').textContent = race.item || '—';
+    byId('box-slot').dataset.ready = String(Boolean(race.item));
+    byId('box-control').hidden = !race.item;
     byId('turbo-slot').dataset.ready=String(race.bottle);
     byId('turbo-status').textContent=player.bottleBoost?'¡Turbo!':race.bottle?'T / Turbo':'—';
     music.duck(countdown>0 || elapsed<.48);
-    music.setBoost(player.bottleBoost>0);
     const signal = countdown > 0 ? String(Math.ceil(countdown)) : elapsed < .72 ? '¡YA!' : '';
     const count = byId('countdown');
     const message = byId('race-message');
@@ -455,7 +457,6 @@
   function showResults(finished) {
     resultTrack=finished.track;
     byId('save-time').textContent='Guardar tiempo';
-    ranking.offer(finished);
     const order = finished.results();
     const place = order.findIndex(car => car.index === finished.player.index) + 1;
     byId('result-title').textContent = place === 1 ? '¡Victoria en ' + finished.track.name + '!' : place + '.º puesto en ' + finished.track.name;
@@ -472,6 +473,7 @@
     show('results');
     startPodium(order);
     byId('result-title').focus({preventScroll: true});
+    ranking.offer(finished, () => openRanking(finished.track, true));
   }
 
   startButton.disabled = true;
@@ -483,15 +485,17 @@
     console.error(error);
     document.querySelector('.hero-description').textContent = 'No se pudieron cargar los pilotos. Abre el juego desde su carpeta completa.';
   });
-  window.addEventListener('pointerdown',()=>music.unlock(),{once:true});
-  window.addEventListener('keydown',()=>music.unlock(),{once:true});
+  window.addEventListener('pointerup',()=>music.unlock());
+  window.addEventListener('keydown',()=>music.unlock());
+  window.addEventListener('pageshow',()=>music.refresh());
+  window.addEventListener('focus',()=>music.refresh());
   startButton.addEventListener('click', () => { sound.unlock(); music.unlock(); showSetup('drivers'); });
   byId('home-button').addEventListener('click', goHome);
-  function openRanking(track) {
+  function openRanking(track, showSaved = false) {
     rankingFrom=screen;
     clearRace();
     show('ranking');
-    ranking.open(track);
+    ranking.open(track, showSaved);
     byId('ranking-title').focus({preventScroll:true});
   }
   byId('ranking-button').addEventListener('click',()=>openRanking());
@@ -514,6 +518,7 @@
     music.setEnabled(sound.enabled && wantsMusic);
     music.unlock();
   });
+  byId('music-volume').addEventListener('input', event => music.setVolume(event.currentTarget.valueAsNumber / 100));
   byId('back').addEventListener('click', () => {
     const index = steps.indexOf(step);
     if (index) showSetup(steps[index - 1]);
@@ -553,7 +558,13 @@
   });
   window.addEventListener('blur', clearControls);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && screen==='race' && race && !race.paused && !race.done) togglePause();
+    if (document.hidden && screen === 'race' && race && !race.paused && !race.done) {
+      pausedInBackground = true;
+      togglePause();
+    } else if (!document.hidden && pausedInBackground) {
+      pausedInBackground = false;
+      if (screen === 'race' && race?.paused) togglePause();
+    }
     music.refresh();
   });
   window.addEventListener('resize', resizeStage);

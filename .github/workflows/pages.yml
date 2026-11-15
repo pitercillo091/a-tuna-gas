@@ -1,6 +1,7 @@
 name: Publicar A Tuna Gas en GitHub Pages
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
@@ -15,20 +16,40 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - uses: actions/configure-pages@v5
+      - uses: actions/setup-python@v5
         with:
-          enablement: true
+          python-version: '3.12'
+      - name: Preparar las pruebas de navegador
+        run: |
+          npm install --prefix "$RUNNER_TEMP/a-tuna-qa" --no-save --no-package-lock playwright@1.62.1
+          echo "NODE_PATH=$RUNNER_TEMP/a-tuna-qa/node_modules" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/a-tuna-qa/node_modules/playwright/cli.js" install --with-deps chromium
+          python -m pip install 'cryptography==46.0.7'
+      - name: Probar el motor, la clasificación y los navegadores
+        run: |
+          node pruebas/motor.cjs
+          node pruebas/clasificaciones.mjs
+          node pruebas/navegador.cjs
+          node pruebas/android-https.cjs
+      - name: Verificar compatibilidad de la clasificación pública
+        if: github.ref == 'refs/heads/main'
+        run: node herramientas/verificar-clasificacion-publica.mjs
+      - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main'
       - run: node herramientas/preparar-pages.mjs
       - uses: actions/upload-pages-artifact@v4
+        if: github.ref == 'refs/heads/main'
         with:
           path: dist-pages
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -10,6 +10,22 @@
 }
 .save-score input{min-width:min(210px,100%);max-width:100%;}
 .save-score button{min-height:46px;}
+.music-volume{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;white-space:nowrap;}
+.music-volume input{width:clamp(65px,9vw,112px);accent-color:var(--gold);}
+#box-slot[data-ready=true]{border-color:#ff9e6e;background:#772e39;box-shadow:0 0 0 2px #ffc77a55;}
+#box-control{display:block;color:#ffe3a3;font-size:.68rem;}
+#box-control[hidden]{display:none;}
+#time-dialog{box-sizing:border-box;width:min(460px,calc(100% - 28px));max-height:calc(100dvh - 28px);overflow:auto;
+  color:var(--ink);background:#192f38;border:1px solid #a8916c;border-radius:10px;padding:20px;box-shadow:0 12px 40px #0008;}
+#time-dialog::backdrop{background:#101c26aa;}
+#time-dialog h3{margin:0 0 12px;font-size:1.3rem;}
+#time-dialog dl{display:grid;grid-template-columns:max-content 1fr;gap:5px 15px;margin:0 0 16px;font-size:.9rem;}
+#time-dialog dt{color:#f2cb87;}
+#time-dialog dd{margin:0;}
+#time-dialog input{width:100%;box-sizing:border-box;}
+#time-error{margin:8px 0;color:var(--gold);}
+.ranking-pages{display:flex;flex-wrap:wrap;gap:8px;}
+.ranking-table tr[data-saved=true]{background:#614a33;}
 #save-status{margin:8px 0;color:var(--gold);}
 .ranking-filters,.ranking-status,.ranking-scroll{margin:0 28px 14px;}
 .ranking-filters select{display:block;margin-top:5px;max-width:100%;width:220px;}

@@ -2,6 +2,25 @@
   const game = globalThis.ATunaGas;
   const {ellipse, rect} = game.drawing;
   function effects(ctx, car, time) {
+    if (car.boxPulse > 0) {
+      const phase = 1 - car.boxPulse / .42;
+      ctx.save();
+      ctx.globalAlpha = 1 - phase;
+      ctx.strokeStyle = '#ffda88';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(car.x, car.y, 26 + 100 * phase, 20 + 74 * phase, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (car.boxSlow > 0) {
+      ellipse(ctx, '#ac3d5865', car.x, car.y + 7, 29, 20);
+      for (let i = 0; i < 4; i++) {
+        const x = car.x - 21 + i * 13;
+        const y = car.y + 16 + Math.sin(time * 11 + i) * 6;
+        rect(ctx, '#fa765e', x, y, 4, 3);
+      }
+    }
     const angle = car.angle;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);

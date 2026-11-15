@@ -6,21 +6,17 @@ import {createReadStream, mkdirSync, statSync} from 'node:fs';
 import {dirname, extname, join, resolve, sep} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import game from './modelo.cjs';
+import {HttpError, maxBody, pageSize, sessionTtl, publicOrigin, pagesOrigin, scoreFields,
+  raceSelection, raceSubmission, checkElapsed, rankingFilters} from './reglas-ranking.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
-const {characters,vehicles,tracks,replay}=game;
+const {tracks,replay}=game;
 const allowed=new Set(['animaciones','circuitos','clasificaciones','interfaz','juego','musica','objetos','personajes','promocion','sonidos','vehiculos']);
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
   '.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.woff2':'font/woff2','.json':'application/json','.txt':'text/plain; charset=utf-8'};
-const publicOrigin='https://atunagas.aquiestalatuna.es';
-const maxBody=240000;
-const ttl=24*60*60*1000;
-const version='1.2';
+const version=replay.version;
 const trackById=new Map(tracks.map(track=>[track.id,track]));
 
-class HttpError extends Error {
-  constructor(status,message){super(message);this.status=status;}
-}
 function send(res,status,value){
   res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
   res.end(JSON.stringify(value));
@@ -39,12 +35,6 @@ async function body(req){
     if(!value||typeof value!=='object'||Array.isArray(value))throw Error();
     return value;
   }catch{throw new HttpError(400,'Los datos no son válidos.');}
-}
-function nickname(value){
-  if(typeof value!=='string')return null;
-  const name=value.normalize('NFKC').trim().replace(/ +/g,' ');
-  const len=[...name].length;
-  return len>=2&&len<=24&&/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ._'’\-]*$/u.test(name)?name:null;
 }
 function simulate(session,runs){
   return new Promise((done,fail)=>{
@@ -104,10 +94,13 @@ export function createRankingServer({dbFile=process.env.RANKING_DB||join(root,'d
   const getSession=db.prepare('SELECT * FROM sessions WHERE id=?');
   const findScore=db.prepare('SELECT * FROM scores WHERE id=?');
   const insert=db.prepare('INSERT OR IGNORE INTO scores VALUES (?,?,?,?,?,?,?,?,?,?)');
-  const columns='name,time_ms,driver,vehicle,track,locality,direction,date';
-  const globalList=db.prepare('SELECT '+columns+' FROM scores ORDER BY time_ms,date,id LIMIT 100');
-  const trackList=db.prepare('SELECT '+columns+' FROM scores WHERE track=? ORDER BY time_ms,date,id LIMIT 100');
-  const townList=db.prepare('SELECT '+columns+' FROM scores WHERE locality=? ORDER BY time_ms,date,id LIMIT 100');
+  const order=' ORDER BY time_ms,date,id LIMIT '+(pageSize+1)+' OFFSET ?';
+  const globalList=db.prepare('SELECT '+scoreFields+' FROM scores'+order);
+  const trackList=db.prepare('SELECT '+scoreFields+' FROM scores WHERE track=?'+order);
+  const townList=db.prepare('SELECT '+scoreFields+' FROM scores WHERE locality=?'+order);
+  const rankInTrack=db.prepare('SELECT count(*)+1 AS rank FROM scores WHERE track=? AND (time_ms,date,id)<(?,?,?)');
+  const savedResult = row => ({saved:true,id:row.id,timeMs:row.time_ms,
+    rank:rankInTrack.get(row.track,row.time_ms,row.date,row.id).rank});
   const pending=new Set();
   const requests=new Map();
   let lastPurge=0;
@@ -137,7 +130,7 @@ export function createRankingServer({dbFile=process.env.RANKING_DB||join(root,'d
       const origin=req.headers.origin;
       const localOrigins=['http://'+req.headers.host,'https://'+req.headers.host];
       const local=!apiOnly&&['localhost','127.0.0.1'].includes(urlHostname(req.headers.host));
-      if(origin&&origin!==site&&!(local&&localOrigins.includes(origin)))throw new HttpError(403,'Origen web no autorizado.');
+      if(origin&&origin!==site&&origin!==pagesOrigin&&!(local&&localOrigins.includes(origin)))throw new HttpError(403,'Origen web no autorizado.');
       if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
       if(req.method==='OPTIONS'){
         res.writeHead(204,{'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'});
@@ -145,24 +138,15 @@ export function createRankingServer({dbFile=process.env.RANKING_DB||join(root,'d
       }
       if(req.method==='GET'&&url.pathname==='/api/health')return send(res,200,{version,tracks:tracks.length});
       if(req.method==='GET'&&url.pathname==='/api/scores'){
-        const route=url.searchParams.get('track');
-        const region=url.searchParams.get('locality');
-        if(route&&!trackById.has(route))throw new HttpError(400,'Circuito desconocido.');
-        if(region&&!tracks.some(track=>track.region===region))throw new HttpError(400,'Localidad desconocida.');
-        const course=route&&trackById.get(route);
-        if(course&&region&&course.region!==region)throw new HttpError(400,'El circuito no pertenece a esa localidad.');
-        const rows=route?trackList.all(route):region?townList.all(region):globalList.all();
-        return send(res,200,{rows});
+        const {route,region,offset}=rankingFilters(tracks,url.searchParams);
+        const rows=route?trackList.all(route,offset):region?townList.all(region,offset):globalList.all(offset);
+        return send(res,200,{rows:rows.slice(0,pageSize),hasMore:rows.length>pageSize});
       }
       if(req.method==='POST'&&url.pathname==='/api/races'){
         limit(req,'race',60);
-        const {track,driver,vehicle,entrants,clientVersion}=await body(req);
-        if(clientVersion!==version)throw new HttpError(409,'Actualiza el juego antes de iniciar una carrera clasificable.');
-        if(!trackById.has(track)||!characters.some(c=>c.id===driver)||!vehicles.some(v=>v.id===vehicle)||
-          !Number.isInteger(entrants)||entrants<6||entrants>15)
-          throw new HttpError(400,'La combinación de carrera no es válida.');
+        const {track,driver,vehicle,entrants}=raceSelection(game,await body(req));
         const now=clock();
-        if(now-lastPurge>60000){purge.run(now-ttl);lastPurge=now;}
+        if(now-lastPurge>60000){purge.run(now-sessionTtl);lastPurge=now;}
         const id=randomBytes(24).toString('base64url');
         const seed=randomInt(2**32);
         start.run(id,track,driver,vehicle,entrants,seed,now);
@@ -170,26 +154,17 @@ export function createRankingServer({dbFile=process.env.RANKING_DB||join(root,'d
       }
       if(req.method==='POST'&&url.pathname==='/api/scores'){
         limit(req,'score',24);
-        const {id,name:raw,runs}=await body(req);
-        const name=nickname(raw);
-        if(!name)throw new HttpError(400,'Escribe entre 2 y 24 caracteres de nombre, con letras o números.');
-        if(typeof id!=='string'||!/^[A-Za-z0-9_-]{32}$/.test(id))throw new HttpError(400,'Falta el identificador de la carrera.');
-        const ticks=replay.ticks(runs);
-        if(!ticks)throw new HttpError(400,'La repetición no tiene un formato válido.');
+        const {id,name,runs,time}=raceSubmission(await body(req),replay);
         const fingerprint=createHash('sha256').update(JSON.stringify([name,runs])).digest('hex');
         const stored=findScore.get(id);
         if(stored){
           if(stored.request_hash!==fingerprint)throw new HttpError(409,'Esta carrera ya tiene un tiempo guardado.');
-          return send(res,200,{saved:true,timeMs:stored.time_ms});
+          return send(res,200,savedResult(stored));
         }
         const session=getSession.get(id);
         const now=clock();
-        if(!session||now-session.created>ttl)throw new HttpError(410,'La sesión ha caducado. Inicia otra carrera.');
-        const time=Math.round(ticks*replay.dt*1000);
-        const route=trackById.get(session.track);
-        const minimum=route.total*route.laps*.8/560*1000;
-        if(time<minimum||time>now-session.created+1600)
-          throw new HttpError(422,'El tiempo no coincide con una carrera posible.');
+        const route=trackById.get(session?.track);
+        checkElapsed(session,route,time,now);
         if(pending.has(id)||pending.size>=2)throw new HttpError(503,'Hay una validación en curso. Reintenta en unos segundos.');
         pending.add(id);
         try{
@@ -199,7 +174,7 @@ export function createRankingServer({dbFile=process.env.RANKING_DB||join(root,'d
             new Date(clock()).toISOString(),fingerprint);
           const result=findScore.get(id);
           if(result.request_hash!==fingerprint)throw new HttpError(409,'Esta carrera ya tiene un tiempo guardado.');
-          return send(res,201,{saved:true,timeMs:result.time_ms});
+          return send(res,201,savedResult(result));
         }finally{pending.delete(id);}
       }
       throw new HttpError(404,'Ruta no encontrada.');

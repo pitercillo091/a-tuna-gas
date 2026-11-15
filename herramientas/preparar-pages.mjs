@@ -1,4 +1,5 @@
-import {readdirSync,readFileSync, mkdirSync,copyFileSync,existsSync} from 'node:fs';
+import {readdirSync,readFileSync,writeFileSync,mkdirSync,copyFileSync,existsSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {dirname,extname,join,resolve,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -32,6 +33,14 @@ export function preparePages(output=join(root,'dist-pages')){
   }
   for(const file of ['index.html','CNAME','.nojekyll'])include(file);
   for(const directory of folders)walk(directory);
+  const version=createHash('sha256');
+  const entryPoints=entries.filter(path=>/\.(js|css)$/.test(path)).sort();
+  for(const path of entryPoints)version.update(path).update(readFileSync(join(folder,path)));
+  const revision=version.digest('hex').slice(0,16);
+  const index=join(folder,'index.html');
+  const html=readFileSync(index,'utf8').replace(/\b(src|href)="([^"]+)"/g,(attribute,name,path)=>
+    entryPoints.includes(path)?name+'="'+path+'?v='+revision+'"':attribute);
+  writeFileSync(index,html);
   return {folder,entries};
 }
 

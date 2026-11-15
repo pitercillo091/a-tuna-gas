@@ -434,18 +434,6 @@
     }
   }
 
-  function drawBox(ctx, box, time) {
-    const {x, y} = box;
-    ellipse(ctx, '#9beed64d', x, y, 19, 11);
-    const h = Math.round(3 * Math.sin(time * 4 + x));
-    const top = y - 12 + h;
-    poly(ctx, [[x,top-5],[x+11,top+1],[x+11,top+12],[x,top+19],[x-11,top+12],[x-11,top+1]], '#2a6c6d');
-    poly(ctx, [[x,top-4],[x+10,top+1],[x,top+7],[x-10,top+1]], '#a7f9d6');
-    poly(ctx, [[x,top+7],[x+10,top+1],[x+10,top+12],[x,top+18]], '#65c7b4');
-    rect(ctx, '#ffebae', x - 3, top + 1, 6, 3);
-    rect(ctx, '#ffebae', x - 1, top + 8, 2, 4);
-  }
-
   function renderCover(canvas) {
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
@@ -488,7 +476,6 @@
     ctx.translate(-camX, -camY);
     race.hazards.forEach(obstacle => drawObstacle(ctx, obstacle));
     for(const item of race.trackItems.entries) if(item.active) game.roadObjects.draw(ctx,item,race.elapsed);
-    race.boxes.filter(box => box.cooldown === 0).forEach(box => drawBox(ctx, box, race.elapsed));
     const cars = race.cars.filter(car => car.x > camX - 72 && car.x < camX + visibleWidth + 72 &&
       car.y > camY - 72 && car.y < camY + visibleHeight + 72).sort((a, b) => a.y - b.y);
     for (const car of cars) game.raceEffects.effects(ctx, car, race.elapsed);

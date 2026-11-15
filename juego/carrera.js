@@ -2,12 +2,13 @@
   const {tracks, characters, vehicles, resolvePilot, roadObjects} = globalThis.ATunaGas;
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
   const turn = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
-  const items = ['Escudo de capa', 'Confeti'];
+  const mysteryBox = 'Caja misteriosa';
   const kmh = speed => Math.round(Math.abs(speed) * .31);
   const bottleBoostDuration = 1.8;
+  const pushRadius = 126;
 
   function tickCarTimers(car, dt) {
-    for (const key of ['boost', 'shield', 'stunned', 'hitDelay', 'spin', 'bottleBoost', 'impact']) {
+    for (const key of ['boost', 'shield', 'stunned', 'hitDelay', 'spin', 'bottleBoost', 'impact', 'boxSlow', 'boxPulse']) {
       car[key] = Math.max(0, car[key] - dt);
     }
   }
@@ -18,6 +19,7 @@
       character, vehicle, index, lane, lateral:lane, ...pose, progress: start, roadS: track.wrap(start),
       speed: 0, movementAngle: pose.angle, boost: 0, shield: 0, stunned: 0, hitDelay: 0, spin: 0, bottleBoost: 0, hasBottle: false,
       driftCharge: 0, drifting: false, finishTime: null, onBranch: false,
+      hasBox: false, boxReadyAt: 0, boxCooldownUntil: 0, boxSlow: 0, boxPulse: 0,
       steer: 0, throttle: false, braking: false, impact: 0
     };
   }
@@ -45,10 +47,8 @@
         const pose = shortcut ? track.atBranch(s, lane) : track.at(s, lane);
         return {...pose, type: type || (index % 2 ? 'crate' : 'barrel')};
       });
-      this.boxes = track.boxRows.flatMap((progress, row) => [-57, 0, 57].map((lane, i) => ({
-        ...track.at(progress * track.total, lane * Math.min(1, track.roadAt(progress * track.total) / 93)), cooldown: 0, item: items[(row + i) % items.length]
-      })));
-      this.trackItems = new roadObjects.TrackItems(track,[...this.hazards,...this.boxes],random);
+      this.random = random;
+      this.trackItems = new roadObjects.TrackItems(track, this.hazards, random);
       this.item = null;
       this.bottle = false;
       this.countdown = 3;
@@ -79,14 +79,18 @@
       const {track} = this;
       this.elapsed += dt;
       this.statusTime -= dt;
-      for (const box of this.boxes) box.cooldown = Math.max(0, box.cooldown - dt);
       for (const car of this.cars) {
+        car.previousX = car.x;
+        car.previousY = car.y;
         tickCarTimers(car, dt);
         if (car !== this.player) this.driveRival(car, dt);
       }
       this.drivePlayer(dt, input);
-      this.trackItems.update(this.elapsed,this.player);
       this.checkRoadObjects();
+      this.trackItems.update(this.elapsed,this.cars);
+      for (const car of this.cars) {
+        if (car !== this.player && car.hasBox && elapsedForBox(car, this.elapsed)) this.useItem(car);
+      }
       this.checkRivals();
       const end = track.laps * track.total;
       if (this.player.progress >= end && this.nextCheckpoint >= end - .01) {
@@ -109,6 +113,7 @@
       let pace = (291 + tier + vehicle.speed * 4 - Math.min(.8, bend) * 61 +
         Math.sin(progress / 295 + index * 1.95) * 13 - track.slope(progress) * 110) * (car.spin ? .34 : car.stunned ? .50 : 1);
       if (car.bottleBoost) pace *= 1.27;
+      if (car.boxSlow) pace *= .57;
       let desired = car.lane*.88 + traffic;
       if(field.length>6) {
         const leader=field.find(other=>other.index!==index && other.finishTime===null &&
@@ -142,18 +147,19 @@
       const offRoad = Math.abs(before.offset) > before.road;
       const steering = Number(input.right) - Number(input.left);
       p.steer += (steering - p.steer) * Math.min(1, dt * 13);
-      p.throttle = input.gas;
+      const accelerating = input.gas || (p.bottleBoost > 0 && !input.brake);
+      p.throttle = accelerating;
       p.braking = input.brake && p.speed > 16;
       const grade = track.slope(p.roadS);
       const maxSpeed = (299 + vehicle.speed * 24) * (1 - clamp(grade * 1.05, -.12, .12));
       if (input.item && this.item) this.useItem();
-      if (input.gas) p.speed += (137 + vehicle.acceleration * 31) * dt;
+      if (accelerating) p.speed += (137 + vehicle.acceleration * 31) * dt;
       if (input.brake) p.speed -= (p.speed > 0 ? 500 : 100) * dt;
-      if (!input.gas && !input.brake) p.speed *= Math.exp(-1.18 * dt);
+      if (!accelerating && !input.brake) p.speed *= Math.exp(-1.18 * dt);
       if (offRoad) p.speed *= Math.exp(-2.35 * dt);
       if (p.boost && !p.spin) p.speed += 320 * dt;
       if (p.speed > 20) p.speed -= grade * 330 * dt;
-      const cap = maxSpeed * (p.boost ? 1.27 : 1);
+      const cap = maxSpeed * (p.boost ? 1.27 : 1) * (p.boxSlow ? .57 : 1);
       if (p.speed > cap) p.speed = Math.max(cap, p.speed - 265 * dt);
       p.speed = clamp(p.speed, -96, maxSpeed * 1.29);
       const absSpeed = Math.abs(p.speed);
@@ -193,19 +199,48 @@
       if (p.progress >= this.nextCheckpoint) this.nextCheckpoint += track.total / 8;
     }
 
-    useItem() {
-      const p = this.player;
-      const item = this.item;
-      this.item = null;
-      if (item === items[0]) {
-        p.shield = 5;
-        this.say('Escudo durante 5 segundos', 'shield');
-      } else {
-        const affected = this.cars.filter(car => car !== p &&
-          Math.abs(car.progress - p.progress) < 440 && Math.hypot(car.x - p.x, car.y - p.y) < 440);
-        affected.forEach(car => { car.stunned = 2.5; });
-        this.say(affected.length ? '¡Rivales cubiertos de confeti!' : 'Confeti lanzado', 'confetti');
+    useItem(source = this.player) {
+      const playerUsesBox = source === this.player;
+      if (playerUsesBox) this.item = null;
+      else {
+        source.hasBox = false;
+        source.boxCooldownUntil = this.elapsed + 9;
       }
+      if (this.random() >= .5) {
+        source.speed *= .62;
+        source.boxSlow = 2.4;
+        if (playerUsesBox) this.say('¡Caja trampa! Pierdes velocidad', 'boxSlow');
+        else if (this.nearPlayer(source)) this.events.push('boxSlow');
+        return;
+      }
+
+      source.boxPulse = .42;
+      const targets = this.cars.filter(car => car !== source && car.finishTime === null &&
+        Math.hypot(car.x - source.x, car.y - source.y) <= pushRadius);
+      for (const car of targets) this.pushOut(car, source);
+      if (playerUsesBox) this.say(targets.length ? '¡Empujón!' : 'Empujón sin rivales cerca', 'boxPush');
+      else if (targets.includes(this.player)) this.say('¡Un rival te ha empujado!', 'boxPush');
+      else if (this.nearPlayer(source)) this.events.push('boxPush');
+    }
+
+    nearPlayer(source) {
+      return Math.hypot(source.x-this.player.x, source.y-this.player.y) < 240;
+    }
+
+    pushOut(car, source) {
+      const {track} = this;
+      const isPlayer = car === this.player;
+      const road = track.project(car.x, car.y, isPlayer ? car.roadS : track.wrap(car.progress), car.onBranch);
+      const side = Math.sign(road.offset) || (car.index < source.index ? -1 : 1);
+      const lateral = side * Math.min(road.road + 14, Math.abs(road.offset) + 48);
+      const pose = road.branch ? track.atBranch(road.s, lateral) : track.at(road.s, lateral);
+      car.x = pose.x;
+      car.y = pose.y;
+      if (!isPlayer) car.lateral = lateral / Math.min(1, road.road / 95);
+      car.stunned = Math.max(car.stunned, .55);
+      car.speed *= .73;
+      car.impact = .34;
+      car.hitDelay = Math.max(car.hitDelay, .36);
     }
 
     useBottle(car = this.player) {
@@ -258,30 +293,36 @@
       if (this.hazards.some(obstacle => nearby(obstacle, 29))) this.hit('¡Obstáculo!', .33 + p.vehicle.weight * .055);
       for(const item of this.trackItems.entries){
         if(!item.active) continue;
-        if(item.kind==='bottle'){
-          if (!this.bottle && nearby(item, 27)) {
+        if (item.kind === 'spike') {
+          const struck = this.cars.find(car => !car.hitDelay && !car.spin &&
+            car.finishTime === null && roadObjects.touches(item, car));
+          if (struck && this.applySpike(struck)) {
+            this.trackItems.take(item,this.elapsed);
+            if (struck !== p && this.nearPlayer(struck)) this.events.push('spin');
+          }
+          continue;
+        }
+        const isBottle = item.kind === 'bottle';
+        if (!(isBottle ? this.bottle : this.item) && roadObjects.touches(item, p)) {
+          if (isBottle) {
             this.bottle = true;
             this.say('Cruzcampo recogido · T o Turbo','pickup');
           } else {
-            const rival = this.cars.find(car => car !== p && car.finishTime === null &&
-              !car.hasBottle && !car.spin && nearby(item, 27, car));
-            if (!rival) continue;
-            rival.hasBottle = true;
+            this.item = mysteryBox;
+            this.say('Caja misteriosa · Espacio u Objeto', 'pickup');
           }
-          this.trackItems.take(item,this.elapsed);
         } else {
-          const struck=this.cars.find(car=>!car.hitDelay && car.finishTime===null &&
-            (car.x-item.x)**2+(car.y-item.y)**2<25**2);
-          if(struck && this.applySpike(struck)) this.trackItems.take(item,this.elapsed);
+          const rival = this.cars.find(car => car !== p && car.finishTime === null && !car.spin &&
+            (isBottle ? !car.hasBottle : !car.hasBox && !car.boxSlow && this.elapsed >= car.boxCooldownUntil) &&
+            roadObjects.touches(item, car));
+          if (!rival) continue;
+          if (isBottle) rival.hasBottle = true;
+          else {
+            rival.hasBox = true;
+            rival.boxReadyAt = this.elapsed + 2.8 + this.random() * 3.2;
+          }
         }
-      }
-      if (!this.item) {
-        const box = this.boxes.find(object => !object.cooldown && nearby(object, 34));
-        if (box) {
-          box.cooldown = 7;
-          this.item = box.item;
-          this.say(this.item + ' preparado', 'pickup');
-        }
+        this.trackItems.take(item,this.elapsed);
       }
     }
 
@@ -331,5 +372,9 @@
     }
   }
 
-  globalThis.ATunaGas.racing = {Race, buildGrid, turn, kmh, items};
+  function elapsedForBox(car, elapsed) {
+    return car.finishTime === null && !car.spin && !car.stunned && elapsed >= car.boxReadyAt;
+  }
+
+  globalThis.ATunaGas.racing = {Race, buildGrid, turn, kmh, mysteryBox};
 })();

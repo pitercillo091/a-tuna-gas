@@ -1,1 +1,1 @@
-globalThis.ATunaGas.rankingEndpoint='https://ranking-atunagas.aquiestalatuna.es';
+globalThis.ATunaGas.rankingEndpoint='https://huxtznmeyprkalgivzfg.supabase.co/functions/v1/atunagas-ranking';

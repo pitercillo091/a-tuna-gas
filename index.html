@@ -49,10 +49,14 @@
       <button class="brand" id="home-button" aria-label="A Tuna Gas, volver al inicio">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name">A TUNA <b>GAS</b></span>
       </button>
-      <div class="audio-actions"><button id="ranking-button" class="quiet">Clasificación</button><button id="sound" class="quiet" aria-pressed="true">Sonido activado</button><button id="music-button" class="quiet" aria-pressed="true">♫ Música</button></div>
+      <div class="audio-actions">
+        <button id="ranking-button" class="quiet">Clasificación</button>
+        <button id="sound" class="quiet" aria-pressed="true">Sonido activado</button>
+        <button id="music-button" class="quiet" aria-pressed="true">♫ Música</button>
+        <label class="music-volume">Volumen <input id="music-volume" type="range" min="0" max="100" value="65" aria-label="Volumen de la música"></label>
+      </div>
     </header>
     <audio id="music-main" preload="metadata" aria-hidden="true"></audio>
-    <audio id="music-turbo" preload="auto" aria-hidden="true"></audio>
     <main>
       <section id="home">
         <div class="hero">
@@ -114,7 +118,7 @@
           <div class="countdown" id="countdown" aria-live="polite"></div>
           <div class="race-message" id="race-message" role="status"></div>
           <div class="inventory">
-            <div class="item-slot"><span>Objeto</span><b id="item">—</b></div>
+            <div class="item-slot" id="box-slot"><span>Objeto</span><b id="item">—</b><small id="box-control" hidden>Espacio / Objeto</small></div>
             <div class="item-slot" id="turbo-slot" title="Botellín Cruzcampo"><canvas id="bottle-icon" width="23" height="33" aria-hidden="true"></canvas><div><span>Botellín</span><br><b id="turbo-status">—</b></div></div>
           </div>
           <div class="pause-layer" id="pause-layer" hidden><h2>Carrera en pausa</h2><button class="primary" id="resume">Continuar</button><button class="quiet" id="quit">Volver a la parrilla</button></div>
@@ -128,13 +132,20 @@
       <section id="results" class="results panel" hidden>
         <div class="screen-title"><p class="overline">A TUNA GAS · RESULTADOS</p><h2 id="result-title" tabindex="-1"></h2><p id="result-note"></p></div>
         <div class="save-score">
-          <form id="time-form" hidden>
-            <label for="time-name">Nombre en la clasificación</label>
-            <div><input id="time-name" name="nickname" autocomplete="nickname" inputmode="text" minlength="2" maxlength="24" required>
-            <button id="save-time" class="primary" type="submit">Guardar tiempo</button></div>
-          </form>
           <p id="save-status" role="status"></p>
+          <button id="open-save-time" type="button" class="primary" hidden>Guardar mi tiempo</button>
           <button id="route-ranking" type="button" class="quiet">Ver tiempos de este circuito</button>
+          <dialog id="time-dialog" aria-labelledby="time-dialog-title">
+            <h3 id="time-dialog-title">Guarda tu tiempo</h3>
+            <dl id="time-summary"></dl>
+            <form id="time-form">
+              <label for="time-name">Nombre en la clasificación</label>
+              <input id="time-name" name="nickname" autocomplete="nickname" inputmode="text" minlength="2" maxlength="24" required>
+              <p id="time-error" role="status"></p>
+              <div><button id="close-save-time" class="quiet" type="button">Ahora no</button>
+                <button id="save-time" class="primary" type="submit">Guardar tiempo</button></div>
+            </form>
+          </dialog>
         </div>
         <figure class="podium">
           <canvas id="podium-canvas" width="900" height="365" aria-label="Podio animado de los tres primeros clasificados"></canvas>
@@ -152,10 +163,10 @@
         </div>
         <p class="ranking-status" id="ranking-status" role="status"></p>
         <div class="ranking-scroll"><table class="ranking-table">
-          <thead><tr><th scope="col">Puesto</th><th scope="col">Jugador</th><th scope="col">Tiempo</th><th scope="col">Circuito</th><th scope="col">Piloto</th><th scope="col">Coche</th><th scope="col">Fecha</th></tr></thead>
+          <thead><tr><th scope="col">Puesto</th><th scope="col">Jugador</th><th scope="col">Tiempo</th><th scope="col">Circuito</th><th scope="col">Localidad</th><th scope="col">Sentido</th><th scope="col">Piloto</th><th scope="col">Coche</th><th scope="col">Fecha y hora</th></tr></thead>
           <tbody id="ranking-body"></tbody>
         </table></div>
-        <div class="selection-actions"><button id="ranking-back" class="quiet" type="button">← Volver</button></div>
+        <div class="selection-actions"><button id="ranking-back" class="quiet" type="button">← Volver</button><div class="ranking-pages"><button id="ranking-prev" class="quiet" type="button" disabled>Anterior</button><button id="ranking-next" class="quiet" type="button" disabled>Siguiente</button></div></div>
       </section>
     </main>
   </div>

@@ -1,6 +1,7 @@
 (() => {
   const fields=['gas','brake','left','right','drift','item','turbo'];
   const dt=1/120;
+  const version='1.2.1';
   const maxTicks=120*900;
   const maxRuns=24000;
   const seed=value=>{
@@ -32,13 +33,15 @@
     }
     return total;
   }
-  function simulate(race,runs){
+  function simulate(race,runs,deadline=Infinity){
     if(!ticks(runs))return null;
     const inputs=Array.from({length:1<<fields.length},(_,mask)=>
       Object.fromEntries(fields.map((key,i)=>[key,Boolean(mask&(1<<i))])));
     while(race.countdown>0)race.step(dt,inputs[0]);
+    let elapsedTicks = 0;
     for(const [mask,count] of runs){
       for(let i=0;i<count;i++){
+        if ((elapsedTicks++ & 255) === 0 && deadline !== Infinity && performance.now() > deadline) return undefined;
         if(race.done)return null;
         race.step(dt,inputs[mask]);
         race.events.length=0;
@@ -46,5 +49,5 @@
     }
     return race.done?Math.round(race.player.finishTime*1000):null;
   }
-  globalThis.ATunaGas.replay={Recorder,seed,simulate,ticks,dt,maxTicks};
+  globalThis.ATunaGas.replay={Recorder,seed,simulate,ticks,dt,maxTicks,version};
 })();

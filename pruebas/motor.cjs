@@ -55,16 +55,20 @@ function position(race, distance, offset, speed = 160) {
 }
 
 const objectRace = start();
-const box = objectRace.boxes[0];
+const box = objectRace.trackItems.entries.find(item=>item.kind==='box'&&item.active);
 const boxPose = track.project(box.x, box.y);
 position(objectRace, boxPose.s, boxPose.offset, 0);
 objectRace.step(dt, neutral);
-assert.equal(objectRace.item, 'Escudo de capa');
+assert.equal(objectRace.item, racing.mysteryBox);
+const boxRandom=objectRace.random;
+objectRace.random=()=>.8;
 objectRace.step(dt, {...neutral, item: true});
-assert(objectRace.player.shield > 0);
+objectRace.random=boxRandom;
+assert(objectRace.player.boxSlow > 0);
 assert.equal(objectRace.item, null);
-assert(box.cooldown > 0);
-objectRace.player.shield=0;
+assert(!box.active);
+assert(box.wake>objectRace.elapsed);
+objectRace.player.boxSlow=0;
 
 const bottleRace=start();
 const bottle=bottleRace.trackItems.entries.find(item=>item.kind==='bottle'&&item.active);
@@ -80,7 +84,7 @@ bottleRace.step(dt,{...neutral,turbo:true});
 assert.equal(bottleRace.bottle,false);
 assert(bottleRace.player.boost>1.7);
 assert(bottleRace.events.includes('bottleTurbo'));
-bottleRace.trackItems.update(bottle.wake+1,bottleRace.player);
+bottleRace.trackItems.update(bottle.wake+1,bottleRace.cars);
 assert.equal(bottle.active,true);
 
 const spikeRace=start();
@@ -101,6 +105,63 @@ assert.equal(spikeRace.pads,undefined);
 const placements=seed=>new racing.Race(characters[3],vehicles[3],track,6,seeded(seed))
   .trackItems.entries.map(({kind,x,y})=>[kind,x,y]);
 assert.notDeepEqual(placements(12),placements(13));
+for (const route of tracks) {
+  const race = new racing.Race(characters[3], vehicles[3], route, 15, seeded(312));
+  for (const rival of race.cars.slice(0,-1)) rival.finishTime = 0;
+  const {entries, amounts} = race.trackItems;
+  for (const [kind, expected] of Object.entries(amounts)) {
+    const objects = entries.filter(item => item.kind === kind);
+    assert.equal(objects.filter(item => item.active).length, expected, route.id + ' ' + kind);
+    for (const item of objects) {
+      const pose = route.project(item.x, item.y, item.s);
+      assert(Math.abs(pose.offset) < pose.road, route.id + ' debe permitir alcanzar ' + kind);
+    }
+    const item = objects[0];
+    Object.assign(race.player,{x:item.x,y:item.y,previousX:item.x,previousY:item.y,speed:150});
+    race.checkRoadObjects();
+    assert(!item.active, route.id + ' debe recoger ' + kind);
+    if (kind === 'bottle') {
+      assert(race.bottle);
+      race.useBottle();
+      assert.equal(race.player.bottleBoost,1.8);
+    } else if (kind === 'box') {
+      assert.equal(race.item,racing.mysteryBox);
+      race.random=()=>.8;
+      race.useItem();
+      assert.equal(race.player.boxSlow,2.4);
+    } else assert(race.player.spin > .8);
+  }
+}
+
+const aiRace = start();
+const [ai, target] = aiRace.cars;
+for (const item of aiRace.trackItems.entries) {
+  item.active = false;
+  item.wake = Infinity;
+}
+const aiBox = aiRace.trackItems.entries.find(item => item.kind === 'box');
+Object.assign(aiBox,{active:true,x:ai.x,y:ai.y});
+aiRace.checkRoadObjects();
+assert(ai.hasBox);
+aiRace.step(dt,neutral);
+assert(ai.hasBox);
+aiRace.elapsed=ai.boxReadyAt;
+aiRace.random=()=>.1;
+aiRace.step(dt,neutral);
+assert(!ai.hasBox && ai.boxPulse > 0 && ai.boxCooldownUntil > aiRace.elapsed);
+assert(target.stunned > 0);
+for (const rival of aiRace.cars.slice(1,-1)) rival.finishTime = 0;
+Object.assign(aiBox,{active:true,x:ai.x,y:ai.y});
+aiRace.checkRoadObjects();
+assert(aiBox.active && !ai.hasBox);
+aiRace.elapsed=ai.boxCooldownUntil;
+aiRace.checkRoadObjects();
+assert(ai.hasBox);
+aiRace.elapsed=ai.boxReadyAt;
+aiRace.random=()=>.8;
+aiRace.step(dt,neutral);
+assert(ai.boxSlow > 0);
+
 for(let n=6;n<=15;n++){
   const race=new racing.Race(characters[3],vehicles[3],track,n,seeded(57));
   assert.equal(race.cars.length,n);
@@ -118,16 +179,18 @@ objectRace.step(dt, neutral);
 assert(objectRace.player.speed < 95);
 assert.equal(objectRace.status, '¡Obstáculo!');
 objectRace.player.hitDelay = 0;
-objectRace.item = 'Escudo de capa';
+objectRace.player.shield = 5;
 position(objectRace, hazardPose.s, hazardPose.offset);
-objectRace.step(dt, {...neutral, item: true});
+objectRace.step(dt, neutral);
 assert(objectRace.player.speed > 145);
 assert.equal(objectRace.status, 'La capa te ha protegido');
 
-const confettiRace = start();
-confettiRace.item = 'Confeti';
-confettiRace.step(dt, {...neutral, item: true});
-assert(confettiRace.cars.filter(car => car !== confettiRace.player).every(car => car.stunned > 0));
+const pushRace = start();
+pushRace.item = racing.mysteryBox;
+pushRace.random = () => .1;
+pushRace.useItem();
+assert(pushRace.player.boxPulse > 0);
+assert(pushRace.cars.some(car => car !== pushRace.player && car.stunned > 0));
 
 const driftRace = start();
 const p = driftRace.player;

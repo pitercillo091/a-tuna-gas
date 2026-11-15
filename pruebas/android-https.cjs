@@ -7,7 +7,7 @@ const {request}=require('node:http');
 const https=require('node:https');
 const {chromium,devices}=require('playwright');
 
-const destination=resolve('pruebas','capturas-1.2');
+const destination=resolve('pruebas','capturas-1.2-final');
 const tlsSource=`
 import json
 from datetime import datetime, timedelta, timezone
@@ -77,7 +77,7 @@ async function test(){
       'C:/Program Files/Google/Chrome/Application/chrome.exe',
       'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'
     ].find(existsSync);
-    browser=await chromium.launch(chrome?{channel:'chrome'}:{channel:'msedge'});
+    browser=await chromium.launch(process.platform==='win32'?(chrome?{channel:'chrome'}:{channel:'msedge'}):{});
     const context=await browser.newContext({...devices['Pixel 7'],viewport:{width:390,height:844},ignoreHTTPSErrors:true});
     const page=await context.newPage();
     page.setDefaultTimeout(16000);
@@ -85,9 +85,18 @@ async function test(){
     const client=await context.newCDPSession(page);
     const errors=[];
     const requests=[];
+    let interruptedTrack = false;
+    await page.route('**/musica/pistas/estudiantina-madrilena.mp3', route => {
+      if (interruptedTrack) return route.continue();
+      interruptedTrack = true;
+      return route.abort('failed');
+    });
     page.on('pageerror',error=>errors.push(error.message));
     page.on('requestfailed',req=>{
-      if(req.failure()?.errorText!=='net::ERR_ABORTED')errors.push(req.url()+' '+req.failure()?.errorText);
+      if(req.failure()?.errorText!=='net::ERR_ABORTED' &&
+        !(interruptedTrack && req.url().endsWith('/estudiantina-madrilena.mp3'))) {
+        errors.push(req.url()+' '+req.failure()?.errorText);
+      }
     });
     page.on('response',res=>{if(res.status()>=400)errors.push(res.status()+' '+res.url());});
     page.on('request',req=>requests.push(req.url()));
@@ -99,6 +108,19 @@ async function test(){
       Race.prototype.step=function(dt,input){window.raceQA=this;tick.call(this,dt,input);};
     });
     await page.locator('#play').tap();
+    await page.waitForFunction(() => {
+      const music = document.getElementById('music-main');
+      return music.dataset.scene === 'garage' && !music.paused && music.currentTime > 0;
+    });
+    assert(interruptedTrack);
+    await page.evaluate(() => {
+      const music = document.getElementById('music-main');
+      music.currentTime = music.duration - .3;
+    });
+    await page.waitForFunction(() => {
+      const music = document.getElementById('music-main');
+      return music.loop && !music.paused && music.currentTime < 1;
+    });
     await page.locator('#next').tap();
     await page.locator('#next').tap();
     assert.equal(await page.locator('.circuit-card').count(),15);
@@ -121,8 +143,19 @@ async function test(){
     await page.locator('#turbo-slot[data-ready=true]').waitFor();
     await page.locator('[data-control=turbo]').tap();
     await page.waitForFunction(()=>window.raceQA.player.bottleBoost>0);
-    await page.waitForFunction(()=>!document.getElementById('music-turbo').paused);
+    await page.waitForFunction(()=>!document.getElementById('music-main').paused);
     await image(page,'android-vertical');
+    await page.evaluate(()=>{
+      const race=window.raceQA;
+      const box=race.trackItems.entries.find(o=>o.active&&o.kind==='box');
+      const road=race.track.project(box.x,box.y);
+      Object.assign(race.player,{x:box.x,y:box.y,speed:100,angle:road.angle,movementAngle:road.angle,
+        roadS:road.s,progress:road.s,onBranch:false,spin:0,hitDelay:0,boost:0,bottleBoost:0});
+    });
+    await page.locator('#box-slot[data-ready=true]').waitFor();
+    await page.locator('[data-control=item]').tap();
+    await page.waitForFunction(()=>!window.raceQA.item &&
+      (window.raceQA.player.boxPulse>0 || window.raceQA.player.boxSlow>0));
     await page.setViewportSize({width:844,height:390});
     await page.waitForFunction(()=>document.getElementById('track').clientHeight<330);
     const row=await page.locator('#touch').boundingBox();
@@ -133,7 +166,7 @@ async function test(){
       assert(bounds.height>=44);
     }
     await image(page,'android-horizontal');
-    console.log('Controles multitáctiles, turbo, audio y giro de pantalla verificados.');
+    console.log('Multitáctil, caja, turbo, recuperación y bucle de audio, y giro de pantalla verificados.');
     await page.evaluate(()=>{
       Object.defineProperty(document,'hidden',{configurable:true,value:true});
       document.dispatchEvent(new Event('visibilitychange'));
@@ -141,6 +174,10 @@ async function test(){
     });
     await page.locator('#pause-layer').waitFor();
     assert(await page.locator('#music-main').evaluate(a=>a.paused));
+    await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+    await page.locator('#pause-layer').waitFor({state:'hidden'});
+    await page.waitForFunction(()=>!document.getElementById('music-main').paused);
+    await page.locator('#pause').tap();
     await page.locator('#quit').tap();
     console.log('Pausa en segundo plano y vuelta a parrilla verificadas.');
     await start(page);
@@ -170,10 +207,9 @@ async function test(){
     assert.equal(await page.locator('#time-name').getAttribute('inputmode'),'text');
     await page.locator('#time-name').fill('Tuna móvil');
     await page.locator('#save-time').tap();
-    await page.waitForFunction(()=>!document.getElementById('save-status').textContent.includes('Verificando')&&document.getElementById('save-status').textContent);
-    assert.match(await page.locator('#save-status').innerText(),/Tiempo guardado/);
-    await page.locator('#route-ranking').tap();
+    await page.locator('#ranking').waitFor();
     await page.locator('#ranking-body').getByText('Tuna móvil').waitFor();
+    assert.match(await page.locator('#ranking-status').innerText(),/Tiempo guardado/);
     assert.equal(await page.locator('#filter-town').inputValue(),'lopera');
     assert.equal(await page.locator('#filter-track').inputValue(),'lopera-2');
     await image(page,'clasificacion-android');
